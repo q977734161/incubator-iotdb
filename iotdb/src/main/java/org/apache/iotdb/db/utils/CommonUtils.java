@@ -18,16 +18,13 @@
  */
 package org.apache.iotdb.db.utils;
 
-import sun.nio.ch.DirectBuffer;
-
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.nio.Buffer;
-import java.nio.ByteBuffer;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class CommonUtils {
-
-  public static final int JAVA_VERSION = CommonUtils.getJdkVersion();
 
   private CommonUtils(){}
 
@@ -45,26 +42,17 @@ public class CommonUtils {
     }
   }
 
-  /**
-   * clean buffer.
-   *
-   * @param byteBuffer Buffer
-   * @throws Exception Exception
-   */
-  public static void destroyBuffer(Buffer byteBuffer) throws Exception {
-    if (JAVA_VERSION == 8) {
-      ((DirectBuffer) byteBuffer).cleaner().clean();
-    } else {
-      try {
-        final Class<?> unsafeClass = Class.forName("sun.misc.Unsafe");
-        final Field theUnsafeField = unsafeClass.getDeclaredField("theUnsafe");
-        theUnsafeField.setAccessible(true);
-        final Object theUnsafe = theUnsafeField.get(null);
-        final Method invokeCleanerMethod = unsafeClass.getMethod("invokeCleaner", ByteBuffer.class);
-        invokeCleanerMethod.invoke(theUnsafe, byteBuffer);
-      } catch (Exception e) {
-        throw e;
-      }
-    }
+  public static long getUsableSpace(String dir) {
+    return new File(dir).getFreeSpace();
+  }
+
+  public static boolean hasSpace(String dir) {
+    return getUsableSpace(dir) > 0;
+  }
+
+  public static long getOccupiedSpace(String folderPath) throws IOException {
+    Path folder = Paths.get(folderPath);
+    return Files.walk(folder).filter(p -> p.toFile().isFile())
+        .mapToLong(p -> p.toFile().length()).sum();
   }
 }

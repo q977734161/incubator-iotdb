@@ -31,34 +31,54 @@ The example is to show how to write and read a TsFile File.
     <dependency>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>tsfile</artifactId>
-     	  <version>0.7.0</version>
+     	  <version>0.8.0-SNAPSHOT</version>
     </dependency>
 </dependencies>
 ```
 
-## Run TsFileWrite1.java
 
-```
-  The class is to show how to write Tsfile by using json schema,it use the first interface: 
-            public TsFileWriter(File file) throws WriteProcessException, IOException
-```
+## Run TsFileWrite.java
 
-## Run TsFileWrite2.java
 
-```
-  The class is to show how to write Tsfile directly,it use the second interface: 
-            public void addMeasurement(MeasurementSchema measurementSchema) throws WriteProcessException
-```
+  This class is to show how to write a TsFile. It provided two ways:
+  
+   The first one is using a JSON string for measurement(s). The JSON string is an array of JSON 
+   objects(schema). The object must include the *measurement_id*, *datatype*, *encoding*, and 
+   *compressor*. 
+   
+   An example JSON string is provided in the comments in 
+   the method
+   
+        public static void tsFileWriteWithJson() throws IOException,WriteProcessException
+   It uses this interface
+   
+        public void addMeasurementByJson(JSONObject measurement) throws WriteProcessException  
+   An alternative way is to add these measurements directly(manually) by the second interface: 
+   
+         public void addMeasurement(MeasurementSchema measurementSchema) throws WriteProcessException
+   
+   The method
+   
+         public static void tsFileWriteDirect() throws IOException,WriteProcessException
+   shows how to use that interface.
+   
+   Note that the measurements in the two methods are the same therefore there output TsFile should also be identical.
 
-### Notice 
-  Class TsFileWrite1 and class TsFileWrite2 are two ways to construct a TsFile instance,they generate the same TsFile file.
+
   
 ## Run TsFileRead.java
 
-```
-  The class is to show how to read TsFile file named "test.tsfile".
-  The TsFile file "test.tsfile" is generated from class TsFileWrite1 or class TsFileWrite2, they generate the same TsFile file by two different ways
-```
+ This class is to show how to read TsFile file named "testDirect.tsfile".
+ 
+ The TsFile file "testDirect.tsfile" is generated from class TsFileWrite.
+ 
+ It generates the same TsFile(testDirect.tsfile and testWithJson.tsfile) file by two different ways
+ 
+ Run TsFileWrite to generate the testDirect.tsfile first
+ 
+## Run TsFileSequenceRead.java
+
+  This class is to show the structure of a TsFile.
 
 ### Notice 
   For detail, please refer to https://github.com/thulab/tsfile/wiki/Get-Started.

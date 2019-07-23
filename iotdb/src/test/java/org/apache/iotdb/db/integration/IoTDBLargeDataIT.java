@@ -27,6 +27,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -53,7 +54,6 @@ public class IoTDBLargeDataIT {
   public static void setUp() throws Exception {
 
     EnvironmentUtils.closeStatMonitor();
-    EnvironmentUtils.closeMemControl();
 
     // use small page setting
     // origin value
@@ -65,6 +65,7 @@ public class IoTDBLargeDataIT {
     tsFileConfig.maxNumberOfPointsInPage = 1000;
     tsFileConfig.pageSizeInByte = 1024 * 150;
     tsFileConfig.groupSizeInByte = 1024 * 1000;
+    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 1000);
 
     daemon = IoTDB.getInstance();
     daemon.active();
@@ -82,6 +83,7 @@ public class IoTDBLargeDataIT {
     tsFileConfig.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
     tsFileConfig.pageSizeInByte = pageSizeInByte;
     tsFileConfig.groupSizeInByte = groupSizeInByte;
+    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSizeInByte);
 
     EnvironmentUtils.cleanEnv();
   }
@@ -156,7 +158,7 @@ public class IoTDBLargeDataIT {
 
       statement.execute("flush");
 
-      // bufferwrite data, memory data
+      // sequential data, memory data
       for (int time = 200000; time < 201000; time++) {
 
         String sql = String
@@ -206,9 +208,6 @@ public class IoTDBLargeDataIT {
         sql = String.format("insert into root.vehicle.d0(timestamp,s5) values(%s, %s)", time, 9999);
         statement.execute(sql);
       }
-
-      // overflow delete
-      // statement.execute("DELETE FROM root.vehicle.d0.s1 WHERE time < 3200");
 
       statement.close();
     } catch (Exception e) {

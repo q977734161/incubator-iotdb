@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.writelog;
 
 import java.io.File;
@@ -23,7 +24,6 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.IoTDB;
@@ -34,29 +34,25 @@ import org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 public class IoTDBLogFileSizeTest {
 
-  private IoTDB deamon;
-
-  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private TSFileConfig fileConfig = TSFileDescriptor.getInstance().getConfig();
+  private IoTDB daemon;
 
   private boolean skip = true;
 
   private int groupSize;
   private long runtime = 600000;
 
-  private String[] setUpSqls = new String[]{"SET STORAGE GROUP TO root.logFileTest.bufferwrite",
-      "SET STORAGE GROUP TO root.logFileTest.overflow",
-      "CREATE TIMESERIES root.logFileTest.bufferwrite.val WITH DATATYPE=INT32, ENCODING=PLAIN",
-      "CREATE TIMESERIES root.logFileTest.overflow.val WITH DATATYPE=INT32, ENCODING=PLAIN",
-      // overflow baseline
-      "INSERT INTO root.logFileTest.overflow(timestamp,val) VALUES (1000000000, 0)"};
+  private String[] setUpSqls = new String[]{"SET STORAGE GROUP TO root.logFileTest.seq",
+      "SET STORAGE GROUP TO root.logFileTest.unsequence",
+      "CREATE TIMESERIES root.logFileTest.seq.val WITH DATATYPE=INT32, ENCODING=PLAIN",
+      "CREATE TIMESERIES root.logFileTest.unsequence.val WITH DATATYPE=INT32, ENCODING=PLAIN",
+      // unsequence baseline
+      "INSERT INTO root.logFileTest.unsequence(timestamp,val) VALUES (1000000000, 0)"};
 
   private String[] tearDownSqls = new String[]{"DELETE TIMESERIES root.logFileTest.*"};
 
@@ -65,11 +61,12 @@ public class IoTDBLogFileSizeTest {
     if (skip) {
       return;
     }
-    groupSize = fileConfig.groupSizeInByte;
-    fileConfig.groupSizeInByte = 8 * 1024 * 1024;
+    groupSize = TSFileConfig.groupSizeInByte;
+    TSFileConfig.groupSizeInByte = 8 * 1024 * 1024;
+    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(8 * 1024 * 1024);
     EnvironmentUtils.closeStatMonitor();
-    deamon = IoTDB.getInstance();
-    deamon.active();
+    daemon = IoTDB.getInstance();
+    daemon.active();
     EnvironmentUtils.envSetUp();
     executeSQL(setUpSqls);
   }
@@ -79,15 +76,16 @@ public class IoTDBLogFileSizeTest {
     if (skip) {
       return;
     }
-    fileConfig.groupSizeInByte = groupSize;
+    TSFileConfig.groupSizeInByte = groupSize;
+    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSize);
     executeSQL(tearDownSqls);
-    deamon.stop();
+    daemon.stop();
     Thread.sleep(5000);
     EnvironmentUtils.cleanEnv();
   }
 
   @Test
-  public void testBufferwrite() throws InterruptedException {
+  public void testSeqFile() throws InterruptedException {
     if (skip) {
       return;
     }
@@ -107,16 +105,15 @@ public class IoTDBLogFileSizeTest {
         Statement statement = connection.createStatement();
         while (true) {
           if (Thread.interrupted()) {
-            System.out.println("Exit after " + cnt + " insertion");
+            //System.out.println("Exit after " + cnt + " insertion");
             break;
           }
           String sql = String.format(
-              "INSERT INTO root.logFileTest.bufferwrite(timestamp,val) VALUES (%d, %d)", ++cnt,
+              "INSERT INTO root.logFileTest.seq(timestamp,val) VALUES (%d, %d)", ++cnt,
               cnt);
           statement.execute(sql);
           WriteLogNode logNode = MultiFileLogNodeManager.getInstance().getNode(
-              "root.logFileTest.bufferwrite" + IoTDBConstant.BUFFERWRITE_LOG_NODE_SUFFIX, null,
-              null);
+              "root.logFileTest.seq" + IoTDBConstant.SEQFILE_LOG_NODE_SUFFIX);
           File bufferWriteWALFile = new File(
               logNode.getLogDirectory() + File.separator + ExclusiveWriteLogNode.WAL_FILE_NAME);
           if (bufferWriteWALFile.exists() && bufferWriteWALFile.length() > maxLength[0]) {
@@ -132,7 +129,6 @@ public class IoTDBLogFileSizeTest {
             connection.close();
           } catch (SQLException e) {
             e.printStackTrace();
-            return;
           }
         }
       }
@@ -143,13 +139,10 @@ public class IoTDBLogFileSizeTest {
     while (writeThread.isAlive()) {
 
     }
-    System.out.println(
-        "Max size of bufferwrite wal is " + MemUtils.bytesCntToStr(maxLength[0]) + " after "
-            + runtime + "ms continuous writing");
   }
 
   @Test
-  public void testOverflow() throws InterruptedException {
+  public void testUnsequence() throws InterruptedException {
     if (skip) {
       return;
     }
@@ -169,16 +162,15 @@ public class IoTDBLogFileSizeTest {
         Statement statement = connection.createStatement();
         while (true) {
           if (Thread.interrupted()) {
-            System.out.println("Exit after " + cnt + " insertion");
+            //System.out.println("Exit after " + cnt + " insertion");
             break;
           }
           String sql = String
-              .format("INSERT INTO root.logFileTest.overflow(timestamp,val) VALUES (%d, %d)",
+              .format("INSERT INTO root.logFileTest.unsequence(timestamp,val) VALUES (%d, %d)",
                   ++cnt, cnt);
           statement.execute(sql);
           WriteLogNode logNode = MultiFileLogNodeManager.getInstance()
-              .getNode("root.logFileTest.overflow" + IoTDBConstant.OVERFLOW_LOG_NODE_SUFFIX, null,
-                  null);
+              .getNode("root.logFileTest.unsequence" + IoTDBConstant.UNSEQFILE_LOG_NODE_SUFFIX);
           File WALFile = new File(
               logNode.getLogDirectory() + File.separator + ExclusiveWriteLogNode.WAL_FILE_NAME);
           if (WALFile.exists() && WALFile.length() > maxLength[0]) {
@@ -194,7 +186,6 @@ public class IoTDBLogFileSizeTest {
             connection.close();
           } catch (SQLException e) {
             e.printStackTrace();
-            return;
           }
         }
       }
@@ -205,17 +196,12 @@ public class IoTDBLogFileSizeTest {
     while (writeThread.isAlive()) {
 
     }
-    System.out.println(
-        "Max size of overflow wal is " + MemUtils.bytesCntToStr(maxLength[0]) + " after " + runtime
-            + "ms continuous writing");
   }
 
   private void executeSQL(String[] sqls) throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = null;
-    try {
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")) {
       Statement statement = connection.createStatement();
       for (String sql : sqls) {
         statement.execute(sql);
@@ -223,10 +209,6 @@ public class IoTDBLogFileSizeTest {
       statement.close();
     } catch (Exception e) {
       e.printStackTrace();
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 }

@@ -34,18 +34,20 @@ import org.apache.iotdb.db.auth.entity.PathPrivilege;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.utils.IOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class store each role in a separate sequential file. Role file schema : Int32 role name
- * length Utf-8 role name bytes Int32 seriesPath privilege number n Int32 seriesPath[1] length Utf-8
+ * size Utf-8 role name bytes Int32 seriesPath privilege number n Int32 seriesPath[1] size Utf-8
  * seriesPath[1] bytes Int32 privilege num k1 Int32 privilege[1][1] Int32 privilege[1][2] ... Int32
- * privilege[1][k1] Int32 seriesPath[2] length Utf-8 seriesPath[2] bytes Int32 privilege num yk2
+ * privilege[1][k1] Int32 seriesPath[2] size Utf-8 seriesPath[2] bytes Int32 privilege num yk2
  * Int32 privilege[2][1] Int32 privilege[2][2] ... Int32 privilege[2][k2] ... Int32 seriesPath[n]
- * length Utf-8 seriesPath[n] bytes Int32 privilege num kn Int32 privilege[n][1] Int32
+ * size Utf-8 seriesPath[n] bytes Int32 privilege num kn Int32 privilege[n][1] Int32
  * privilege[n][2] ... Int32 privilege[n][kn]
  */
 public class LocalFileRoleAccessor implements IRoleAccessor {
-
+  private static final Logger logger = LoggerFactory.getLogger(LocalFileRoleAccessor.class);
   private static final String TEMP_SUFFIX = ".temp";
   private static final String STRING_ENCODING = "utf-8";
 
@@ -161,6 +163,10 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
 
   @Override
   public void reset() {
-    new File(roleDirPath).mkdirs();
+    if (new File(roleDirPath).mkdirs()) {
+      logger.info("role info dir {} is created", roleDirPath);
+    } else if (!new File(roleDirPath).exists()) {
+      logger.error("role info dir {} can not be created", roleDirPath);
+    }
   }
 }

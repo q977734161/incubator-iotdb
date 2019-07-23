@@ -114,7 +114,6 @@ public class IoTDBAggregationLargeDataIT {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    EnvironmentUtils.closeMemControl();
     daemon = IoTDB.getInstance();
     daemon.active();
     EnvironmentUtils.envSetUp();
@@ -854,7 +853,6 @@ public class IoTDBAggregationLargeDataIT {
       }
 
       statement.execute("flush");
-      System.out.println("cnt = " + cnt);
 
       // insert large amount of data
       for (int time = 3700; time < 4000; time++) {
@@ -878,11 +876,7 @@ public class IoTDBAggregationLargeDataIT {
         d0s2sum += time % 123;
       }
 
-      statement.execute("merge");
-
-      System.out.println("large insert cnt = " + cnt);
-      System.out
-          .println("d0s0sum = " + d0s0sum + "; d0s1sum = " + d0s1sum + "; d0s2sum = " + d0s2sum);
+//      statement.execute("merge");
       for (String sql : insertSql) {
         statement.execute(sql);
       }

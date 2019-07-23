@@ -124,12 +124,11 @@ public class IoTDBAggregationSmallDataIT {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    EnvironmentUtils.closeMemControl();
     daemon = IoTDB.getInstance();
     daemon.active();
     EnvironmentUtils.envSetUp();
 
-    Thread.sleep(5000);
+    //Thread.sleep(5000);
     insertSQL();
   }
 

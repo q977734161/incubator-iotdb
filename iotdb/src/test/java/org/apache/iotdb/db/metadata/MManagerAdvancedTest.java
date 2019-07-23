@@ -23,10 +23,9 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.db.exception.MetadataArgsErrorException;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -42,10 +41,12 @@ public class MManagerAdvancedTest {
   @Before
   public void setUp() throws Exception {
 
+    EnvironmentUtils.envSetUp();
     mmanager = MManager.getInstance();
 
-    mmanager.setStorageLevelToMTree("root.vehicle.d1");
     mmanager.setStorageLevelToMTree("root.vehicle.d0");
+    mmanager.setStorageLevelToMTree("root.vehicle.d1");
+    mmanager.setStorageLevelToMTree("root.vehicle.d2");
 
     mmanager.addPathToMTree("root.vehicle.d0.s0", "INT32", "RLE");
     mmanager.addPathToMTree("root.vehicle.d0.s1", "INT64", "RLE");
@@ -60,6 +61,7 @@ public class MManagerAdvancedTest {
     mmanager.addPathToMTree("root.vehicle.d1.s3", "DOUBLE", "RLE");
     mmanager.addPathToMTree("root.vehicle.d1.s4", "BOOLEAN", "PLAIN");
     mmanager.addPathToMTree("root.vehicle.d1.s5", "TEXT", "PLAIN");
+
   }
 
   @After
@@ -72,15 +74,15 @@ public class MManagerAdvancedTest {
 
     try {
       // test file name
-      List<String> fileNames = mmanager.getAllFileNames();
+      List<String> fileNames = mmanager.getAllStorageGroupNames();
       assertEquals(2, fileNames.size());
       if (fileNames.get(0).equals("root.vehicle.d0")) {
-        assertEquals(fileNames.get(1), "root.vehicle.d1");
+        assertEquals("root.vehicle.d1", fileNames.get(1));
       } else {
-        assertEquals(fileNames.get(1), "root.vehicle.d0");
+        assertEquals("root.vehicle.d0", fileNames.get(1));
       }
       // test filename by seriesPath
-      assertEquals("root.vehicle.d0", mmanager.getFileNameByPath("root.vehicle.d0.s1"));
+      assertEquals("root.vehicle.d0", mmanager.getStorageGroupNameByPath("root.vehicle.d0.s1"));
       Map<String, ArrayList<String>> map = mmanager
           .getAllPathGroupByFileName("root.vehicle.d1.*");
       assertEquals(1, map.keySet().size());
@@ -89,14 +91,14 @@ public class MManagerAdvancedTest {
       assertEquals(6, paths.size());
       paths = mmanager.getPaths("root.vehicle.d2");
       assertEquals(0, paths.size());
-    } catch (PathErrorException e) {
+    } catch (MetadataErrorException | PathErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
   }
 
   @Test
-  public void testCache() throws PathErrorException, IOException, MetadataArgsErrorException {
+  public void testCache() throws PathErrorException, IOException, MetadataErrorException {
     mmanager.addPathToMTree("root.vehicle.d2.s0", "DOUBLE", "RLE");
     mmanager.addPathToMTree("root.vehicle.d2.s1", "BOOLEAN", "PLAIN");
     mmanager.addPathToMTree("root.vehicle.d2.s2.g0", "TEXT", "PLAIN");
@@ -125,7 +127,7 @@ public class MManagerAdvancedTest {
 
   @Test
   public void testGetNextLevelPath()
-      throws PathErrorException, IOException, MetadataArgsErrorException {
+      throws PathErrorException, IOException {
     mmanager.addPathToMTree("root.vehicle.d2.s0", "DOUBLE", "RLE");
     mmanager.addPathToMTree("root.vehicle.d2.s1", "BOOLEAN", "PLAIN");
     mmanager.addPathToMTree("root.vehicle.d2.s2.g0", "TEXT", "PLAIN");

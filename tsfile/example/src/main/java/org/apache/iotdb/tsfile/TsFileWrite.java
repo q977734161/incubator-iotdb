@@ -16,11 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-/**
- * There are two ways to construct a TsFile instance,they generate the same TsFile file.
- * The class use the second interface:
- * public void addMeasurement(MeasurementSchema MeasurementSchema) throws WriteProcessException
- */
+
 package org.apache.iotdb.tsfile;
 
 import java.io.File;
@@ -32,9 +28,10 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
 /**
  * An example of writing data to TsFile
+ * It uses the interface:
+ * public void addMeasurement(MeasurementSchema MeasurementSchema) throws WriteProcessException
  */
 public class TsFileWrite {
 
@@ -49,12 +46,11 @@ public class TsFileWrite {
 
       // add measurements into file schema
       tsFileWriter
-          .addMeasurement(new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
+              .addMeasurement(new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
       tsFileWriter
-          .addMeasurement(new MeasurementSchema("sensor_2", TSDataType.INT32, TSEncoding.TS_2DIFF));
+              .addMeasurement(new MeasurementSchema("sensor_2", TSDataType.INT32, TSEncoding.TS_2DIFF));
       tsFileWriter
-          .addMeasurement(new MeasurementSchema("sensor_3", TSDataType.INT32, TSEncoding.TS_2DIFF));
-
+              .addMeasurement(new MeasurementSchema("sensor_3", TSDataType.INT32, TSEncoding.TS_2DIFF));
       // construct TSRecord
       TSRecord tsRecord = new TSRecord(1, "device_1");
       DataPoint dPoint1 = new FloatDataPoint("sensor_1", 1.2f);
@@ -97,7 +93,7 @@ public class TsFileWrite {
       tsRecord.addTuple(dPoint2);
       tsRecord.addTuple(dPoint3);
       tsFileWriter.write(tsRecord);
-
+      
       tsRecord = new TSRecord(7, "device_1");
       dPoint1 = new FloatDataPoint("sensor_1", 6.2f);
       dPoint2 = new IntDataPoint("sensor_2", 20);
@@ -115,7 +111,7 @@ public class TsFileWrite {
       tsRecord.addTuple(dPoint2);
       tsRecord.addTuple(dPoint3);
       tsFileWriter.write(tsRecord);
-
+    
       // close TsFile
       tsFileWriter.close();
     } catch (Throwable e) {
@@ -123,5 +119,4 @@ public class TsFileWrite {
       System.out.println(e.getMessage());
     }
   }
-
 }

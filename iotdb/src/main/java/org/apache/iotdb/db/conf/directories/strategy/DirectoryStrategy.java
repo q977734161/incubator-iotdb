@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.conf.directories.strategy;
 
 import java.util.List;
+import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,7 +32,7 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class DirectoryStrategy {
 
-  protected static final Logger LOGGER = LoggerFactory.getLogger(DirectoryStrategy.class);
+  protected static final Logger logger = LoggerFactory.getLogger(DirectoryStrategy.class);
 
   /**
    * All the folders of data files, should be init once the subclass is created.
@@ -39,11 +41,24 @@ public abstract class DirectoryStrategy {
 
   /**
    * To init folders. Do not recommend to overwrite.
+   * This method guarantees that at least one folder has available space.
    *
    * @param folders the folders from conf
    */
-  public void init(List<String> folders) {
+  public void init(List<String> folders) throws DiskSpaceInsufficientException {
     this.folders = folders;
+
+    boolean hasSpace = false;
+    for (String folder : folders) {
+      if (CommonUtils.hasSpace(folder)) {
+        hasSpace = true;
+        break;
+      }
+    }
+    if (!hasSpace) {
+      throw new DiskSpaceInsufficientException(
+          String.format("All disks of folders %s are full, can't init.", folders));
+    }
   }
 
   /**
@@ -51,7 +66,7 @@ public abstract class DirectoryStrategy {
    *
    * @return the index of folder that will be allocated
    */
-  public abstract int nextFolderIndex();
+  public abstract int nextFolderIndex() throws DiskSpaceInsufficientException;
 
   /**
    * Return the actual string value of a folder by its index.

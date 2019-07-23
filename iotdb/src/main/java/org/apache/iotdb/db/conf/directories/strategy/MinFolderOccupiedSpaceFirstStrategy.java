@@ -19,58 +19,42 @@
 package org.apache.iotdb.db.conf.directories.strategy;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-import java.util.stream.Stream;
+import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.utils.CommonUtils;
 
 public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
 
-  // directory space is measured by MB
-  private static final long DATA_SIZE_SHIFT = 1024L * 1024;
-
   @Override
-  public int nextFolderIndex() {
+  public int nextFolderIndex() throws DiskSpaceInsufficientException {
     return getMinOccupiedSpaceFolder();
   }
 
-  private int getMinOccupiedSpaceFolder() {
-    List<Integer> candidates = new ArrayList<>();
-    candidates.add(0);
-    long min = getOccupiedSpace(folders.get(0));
-    for (int i = 1; i < folders.size(); i++) {
-      long current = getOccupiedSpace(folders.get(i));
-      if (min > current) {
-        candidates.clear();
-        candidates.add(i);
-        min = current;
-      } else if (min == current) {
-        candidates.add(i);
+  private int getMinOccupiedSpaceFolder() throws DiskSpaceInsufficientException {
+    int minIndex = -1;
+    long minSpace = Long.MAX_VALUE;
+
+    for (int i = 0; i < folders.size(); i++) {
+      String folder = folders.get(i);
+      if (!CommonUtils.hasSpace(folder)) {
+        continue;
+      }
+
+      long space = 0;
+      try {
+        space = CommonUtils.getOccupiedSpace(folder);
+      } catch (IOException e) {
+        logger.error("Cannot calculate occupied space for path {}.", folder, e);
+      }
+      if (space < minSpace) {
+        minSpace = space;
+        minIndex = i;
       }
     }
 
-    Random random = new Random(System.currentTimeMillis());
-    int index = random.nextInt(candidates.size());
-
-    return candidates.get(index);
-  }
-
-  private long getOccupiedSpace(String path) {
-    Path folder = Paths.get(path);
-    long size = Long.MAX_VALUE;
-    try {
-      try (Stream<Path> stream = Files.walk(folder)) {
-        size = stream.filter(p -> p.toFile().isFile())
-            .mapToLong(p -> p.toFile().length())
-            .sum();
-      }
-    } catch (IOException e) {
-      LOGGER.error("Cannot calculate occupied space for seriesPath {}.", path, e);
+    if (minIndex == -1) {
+      throw new DiskSpaceInsufficientException(folders);
     }
 
-    return size / DATA_SIZE_SHIFT;
+    return minIndex;
   }
 }
